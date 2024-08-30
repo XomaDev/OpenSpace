@@ -3,6 +3,8 @@ package space.themelon.openspace.server
 import space.themelon.openspace.server.TrafficControl.ALLOWED_ADDRESSES
 import space.themelon.openspace.server.io.BidirectionalSocket
 import space.themelon.openspace.server.io.BytesIO
+import java.io.InputStream
+import java.io.OutputStream
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
@@ -37,20 +39,21 @@ object Server {
         val input = client.getInputStream()
         val output = client.getOutputStream()
 
-        fun sayBye() {
-            output.write(NOPE)
-            client.close()
+        if (acceptSocksGreet(input, output)) {
+            serveSocksProxy(input, output)
         }
+    }
 
-        // ensure version compatibility
-        val version = input.read()
-        if (version != SERVER_VERSION) {
-            sayBye()
-            return
+    private fun serveSocksProxy(input: InputStream, output: OutputStream) {
+        matchSocksVersion(input)
+        input.read().let {
+            if (it != CMD_STREAM) {
+                throw Exception("Expected CMD_STREAM for SOCKS5 but got $it")
+            }
         }
-        output.write(YES)
+        matchSocksRSV(input)
 
-        // read connection destination
+        // read destination addr
         val addressType = input.read()
         val addrSize: Int
         val address: ByteArray
@@ -68,13 +71,12 @@ object Server {
                 addrSize = address.size
             }
             else -> {
-                sayBye()
-                return
+                output.write(byteArrayOf(STATUS_ADDRESS_UNSUPPORTED.toByte(), 0))
+                throw RuntimeException("Unknown address type: $addressType")
             }
         }
         val portBytes = BytesIO.readBytes(2, input)
         val port = (portBytes[0].toInt() and 0xff) shl 8 or portBytes[1].toInt() and 0xff
-        output.write(YES)
 
         // > Our server acts as a protection layer. If we blindly proxy the requests forward
         //   to the Host network, it could be vulnerable to Spam attacks.
@@ -95,11 +97,10 @@ object Server {
 
         if (!checkIfAllowed(inetAddress.hostAddress, port)) {
             // address isn't allowed
-            output.write(NOPE)
-            sayBye()
+            output.write(byteArrayOf(STATUS_NOT_ALLOWED.toByte(), 0))
             return
         }
-        output.write(YES)
+        output.write(byteArrayOf(STATUS_GRANTED.toByte(), 0))
 
         // now we have to add a consumable hook into a pending queue
         HookManager.addHook { hostClient ->
@@ -128,6 +129,36 @@ object Server {
         }
     }
 
+    private fun acceptSocksGreet(input: InputStream, output: OutputStream): Boolean {
+        matchSocksVersion(input)
+        val authTypes = BytesIO.readBytes(input.read(), input)
+        for (type in authTypes) {
+            if (type == AUTH_NONE) {
+                output.write(byteArrayOf(SOCKS_VERSION.toByte(), type))
+                return true
+            }
+        }
+        // no supported auth type b/w client and server
+        output.write(byteArrayOf(SOCKS_VERSION.toByte(), 0xFF.toByte()))
+        return false
+    }
+
+    private fun matchSocksVersion(input: InputStream) {
+        input.read().let {
+            if (it != SOCKS_VERSION) {
+                throw Exception("Expected Socks 5 Version, got $it")
+            }
+        }
+    }
+
+    private fun matchSocksRSV(input: InputStream) {
+        input.read().let {
+            if (it != 0x00) {
+                throw Exception("Expected SOCKS5 RSV Byte, got $it")
+            }
+        }
+    }
+
     private fun checkIfAllowed(address: String, port: Int): Boolean {
         val portRange = ALLOWED_ADDRESSES[address] ?: return false
         return port in portRange[0]..portRange[1]
@@ -140,14 +171,30 @@ object Server {
         HookManager.notifyHook(client)
     }
 
-    const val SERVER_VERSION = 0
+    // SOCKS5 Protocol
+    private const val SOCKS_VERSION = 5
+    private const val ADDR_IPV4 = 0x01
+    private const val ADDR_DOMAIN = 0x03
+    private const val ADDR_IPV6 = 0x04
 
-    // Answers
-    const val NOPE = 0
-    const val YES = 1
+    // tcp relay format
+    private const val CMD_STREAM = 0x01
+
+    private const val STATUS_GRANTED = 0x00
+    private const val STATUS_FAILURE = 0x01
+    private const val STATUS_NOT_ALLOWED = 0x02
+    private const val STATUS_NETWORK_UNREACHABLE = 0x03
+    private const val STATUS_HOST_UNREACHABLE = 0x04
+    private const val STATUS_CONNECTION_REFUSED = 0x05
+    private const val STATUS_PROTOCOL_ERROR = 0x07
+    private const val STATUS_ADDRESS_UNSUPPORTED = 0X08
+
+    // proxy auth type
+    private const val AUTH_NONE: Byte = 0x00
+    private const val AUTH_USER_PASS: Byte = 0x02
 
     // Address format
-    const val ADDRESS_IPV4 = 0
-    const val ADDRESS_IPV6 = 1
-    const val ADDRESS_DOMAIN = 2
+    private const val ADDRESS_IPV4 = 0
+    private const val ADDRESS_IPV6 = 1
+    private const val ADDRESS_DOMAIN = 2
 }
