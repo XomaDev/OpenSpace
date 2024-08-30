@@ -1,21 +1,33 @@
 package space.themelon.openspace.server
 
 import space.themelon.openspace.server.TrafficControl.ALLOWED_ADDRESSES
-import java.io.InputStream
+import space.themelon.openspace.server.io.BidirectionalSocket
+import space.themelon.openspace.server.io.BytesIO
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
 import kotlin.concurrent.thread
 
 object Server {
-    fun start(port: Int) {
-        // manages external client requests
+    fun start(hostPort: Int, servePort: Int) {
+        // manages proxy requests
         thread {
-            val server = ServerSocket(port)
+            val server = ServerSocket(servePort)
             while (true) {
                 val client = server.accept()
                 thread {
                     serveClient(client)
+                }
+            }
+        }
+
+        // manages host device connections
+        thread {
+            val server = ServerSocket(hostPort)
+            while (true) {
+                val client = server.accept()
+                thread {
+                    useHost(client)
                 }
             }
         }
@@ -40,21 +52,28 @@ object Server {
 
         // read connection destination
         val addressType = input.read()
-        val address = when (addressType) {
-            ADDRESS_IPV4 -> readArray(input, 4)
-            ADDRESS_IPV6 -> readArray(input, 16)
-            ADDRESS_DOMAIN -> readArray(input, input.read())
+        val addrSize: Int
+        val address: ByteArray
+        when (addressType) {
+            ADDRESS_IPV4 -> {
+                addrSize = 4
+                address = BytesIO.readBytes(4, input)
+            }
+            ADDRESS_IPV6 -> {
+                addrSize = 16
+                address = BytesIO.readBytes(16, input)
+            }
+            ADDRESS_DOMAIN -> {
+                address = BytesIO.readFixedString(input)
+                addrSize = address.size
+            }
             else -> {
                 sayBye()
                 return
             }
         }
-        if (address == null) {
-            // addr read failed
-            sayBye()
-            return
-        }
-        val port = (input.read() and 0xff) shl 8 or input.read() and 0xff
+        val portBytes = BytesIO.readBytes(2, input)
+        val port = (portBytes[0].toInt() and 0xff) shl 8 or portBytes[1].toInt() and 0xff
         output.write(YES)
 
         // > Our server acts as a protection layer. If we blindly proxy the requests forward
@@ -83,7 +102,30 @@ object Server {
         output.write(YES)
 
         // now we have to add a consumable hook into a pending queue
+        HookManager.addHook { hostClient ->
+            hostClient.getOutputStream().apply {
+                // forward the address of requester
+                BytesIO.writeFixedString(client.inetAddress.address, this)
 
+                // send in destination address
+                write(
+                    byteArrayOf(
+                        // port
+                        portBytes[0],
+                        portBytes[1],
+
+                        // addr_type, addr_len
+                        addressType.toByte(),
+                        addrSize.toByte(),
+                    )
+                )
+                // address
+                write(address)
+                flush()
+            }
+            // relays information b/w host and proxy req client
+            BidirectionalSocket.relay(client, hostClient)
+        }
     }
 
     private fun checkIfAllowed(address: String, port: Int): Boolean {
@@ -91,16 +133,11 @@ object Server {
         return port in portRange[0]..portRange[1]
     }
 
-    private fun readArray(input: InputStream, size: Int): ByteArray? {
-        // we have to fully fill the byte array
-        val array = ByteArray(size)
-        var totalRead = 0
-        while (true) {
-            val read = input.read(array, totalRead, size)
-            if (read == -1) return null
-            totalRead += read
-            if (totalRead == size) array
-        }
+    private fun useHost(client: Socket) {
+        // TODO:
+        //  In future, we have to authenticate this connection before
+        //  we pair and relay data back and forth
+        HookManager.notifyHook(client)
     }
 
     const val SERVER_VERSION = 0
