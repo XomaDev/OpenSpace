@@ -1,0 +1,15 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="OpenSpace.server.main:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/OpenSpace_server_main_jar</output-path>
+    <root id="archive" name="OpenSpace.server.main.jar">
+      <element id="module-output" name="OpenSpace.server.main" />
+      <element id="module-output" name="OpenSpace.mutual_helper.main" />
+      <element id="extracted-dir" path="$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.google.code.gson/gson/2.8.9/8a432c1d6825781e21a02db2e2c33c5fde2833b9/gson-2.8.9.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.hotmoka/toml4j/0.7.3/81cf97d724c0741c646ac34a9a85d8050c1ac2ab/toml4j-0.7.3.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.jetbrains/annotations/13.0/919f0dfe192fb4e063e7dacadee7f8bb9a2672a9/annotations-13.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib-jdk7/2.0.20/d70dafddc862404c4ecdb59eeb4bdfac8019937d/kotlin-stdlib-jdk7-2.0.20.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib/2.0.20/7388d355f7cceb002cd387ccb7ab3850e4e0a07f/kotlin-stdlib-2.0.20.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib-jdk8/2.0.20/764dd55ea8b14f76a3d66c403cfed212287a23dd/kotlin-stdlib-jdk8-2.0.20.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>

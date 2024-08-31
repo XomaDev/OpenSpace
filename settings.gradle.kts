@@ -9,3 +9,4 @@ plugins {
 rootProject.name = "OpenSpace"
 include("server")
 include("client")
+include("mutual_helper")

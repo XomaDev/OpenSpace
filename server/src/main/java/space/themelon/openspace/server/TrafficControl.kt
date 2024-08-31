@@ -13,10 +13,11 @@ object TrafficControl {
         val addresses = toml.getList<List<Any>>("addresses")
         for (address in addresses) {
             val addr = (address[0] as String).trim().lowercase()
-            val portRange = address[1] as List<Long>
+            val fromPort = (address[1] as String).toLong()
+            val toPort = (address[2] as String).toLong()
 
             ALLOWED_ADDRESSES[InetAddress.getByName(addr).hostAddress] = longArrayOf(
-                portRange[0], portRange[1],
+                fromPort, toPort,
             )
         }
     }

@@ -8,7 +8,8 @@ object Main {
             args[1].toInt()
         } catch (e: NumberFormatException) {
             println("Invalid port provided: ${args[1]}")
+            return
         }
-
+        Client.start(serverIp, port)
     }
 }

@@ -1,13 +1,15 @@
 package space.themelon.openspace.server
 
+import space.themelon.openspace.helper.io.BidirectionalSocket
+import space.themelon.openspace.helper.io.BytesIO
 import space.themelon.openspace.server.TrafficControl.ALLOWED_ADDRESSES
-import space.themelon.openspace.server.io.BidirectionalSocket
-import space.themelon.openspace.server.io.BytesIO
 import java.net.InetAddress
+import java.net.ServerSocket
 import java.net.Socket
 
 class Socks5(
-    private val client: Socket
+    private val client: Socket,
+    private val routeServer: ServerSocket
 ) {
 
     companion object {
@@ -97,28 +99,27 @@ class Socks5(
             return
         }
         output.write(byteArrayOf(STATUS_GRANTED, 0))
-        // now we need to add a pending hook
-        HookManager.addHook { hostSocket ->
-            // request origination
-            hostSocket.getOutputStream().apply {
-                BytesIO.writeFixedString(client.inetAddress.address, this)
 
-                write(
-                    byteArrayOf(
-                        // write destination port
-                        portBytes[0], portBytes[1],
+        val hostSocket = routeServer.accept()
+        // request origination
+        hostSocket.getOutputStream().apply {
+            BytesIO.writeFixedString(client.inetAddress.address, this)
 
-                        // write dest. addr_type, addr_len
-                        addressType.toByte(), addrSize.toByte()
-                    )
+            write(
+                byteArrayOf(
+                    // write destination port
+                    portBytes[0], portBytes[1],
+
+                    // write dest. addr_type, addr_len
+                    addressType.toByte(), addrSize.toByte()
                 )
-                // now write the address itself
-                write(address)
-                flush()
-            }
-            // now begin relay information b/w host and origin
-            BidirectionalSocket.relay(client, hostSocket)
+            )
+            // now write the address itself
+            write(address)
+            flush()
         }
+        // now begin relay information b/w host and origin
+        BidirectionalSocket.relay(client, hostSocket)
     }
 
     private fun notRoutable(address: String, port: Int): Boolean {

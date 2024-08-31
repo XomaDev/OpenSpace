@@ -1,6 +1,6 @@
-package space.themelon.openspace.server.io
+package space.themelon.openspace.helper.io
 
-import space.themelon.openspace.server.io.Safety.ioThreadSafe
+import space.themelon.openspace.helper.io.Safety.ioThreadSafe
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.Socket

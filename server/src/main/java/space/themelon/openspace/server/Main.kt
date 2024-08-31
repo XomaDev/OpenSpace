@@ -21,12 +21,13 @@ object Main {
             println("Invalid host port provided: ${args[1]}")
             return
         }
-        val yamlFilePath = File(args[2])
+        val filePath = if (args[2].startsWith('/')) args[2] else "${System.getProperty("user.dir")}/${args[2]}  "
+        val yamlFilePath = File(filePath)
         if (!yamlFilePath.isFile || !yamlFilePath.exists()) {
             println("File does not exist: $yamlFilePath")
             return
         }
         TrafficControl.loadYAML(yamlFilePath)
-        Server.start(hostPort, proxyPort)
+        Server(hostPort, proxyPort)
     }
 }
