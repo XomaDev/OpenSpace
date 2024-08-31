@@ -1,8 +1,8 @@
 package space.themelon.openspace.server
 
-import space.themelon.openspace.helper.io.BidirectionalSocket
-import space.themelon.openspace.helper.io.BytesIO
 import space.themelon.openspace.server.TrafficControl.ALLOWED_ADDRESSES
+import space.themelon.openspace.server.io.BidirectionalSocket
+import space.themelon.openspace.server.io.BytesIO
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
@@ -93,11 +93,15 @@ class Socks5(
         val portBytes = BytesIO.readBytes(2, input)
         val port = (portBytes[0].toInt() and 0xff) shl 8 or portBytes[1].toInt() and 0xff
 
+        println("Request to route to ${inetAddr.hostAddress} $port")
+
         if (notRoutable(inetAddr.hostAddress, port)) {
             // this address is not listed
+            println("Not granted")
             output.write(byteArrayOf(STATUS_NOT_ALLOWED, 0))
             return
         }
+        println("Granted")
         output.write(byteArrayOf(STATUS_GRANTED, 0))
 
         val hostSocket = routeServer.accept()
@@ -124,7 +128,7 @@ class Socks5(
 
     private fun notRoutable(address: String, port: Int): Boolean {
         val portRange = ALLOWED_ADDRESSES[address] ?: return false
-        return port in portRange[0]..portRange[1]
+        return port !in portRange[0]..portRange[1]
     }
 
     private fun matchVersion() {

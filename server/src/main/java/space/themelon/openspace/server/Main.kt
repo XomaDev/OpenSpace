@@ -16,17 +16,13 @@ object Main {
             return
         }
         val proxyPort = try {
-            args[0].toInt()
+            args[1].toInt()
         } catch (e: NumberFormatException) {
             println("Invalid host port provided: ${args[1]}")
             return
         }
         val filePath = if (args[2].startsWith('/')) args[2] else "${System.getProperty("user.dir")}/${args[2]}  "
         val yamlFilePath = File(filePath)
-        if (!yamlFilePath.isFile || !yamlFilePath.exists()) {
-            println("File does not exist: $yamlFilePath")
-            return
-        }
         TrafficControl.loadYAML(yamlFilePath)
         Server(hostPort, proxyPort)
     }

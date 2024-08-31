@@ -1,8 +1,9 @@
 package space.themelon.openspace.client
 
-import space.themelon.openspace.helper.io.BidirectionalSocket
-import space.themelon.openspace.helper.io.BytesIO
+import space.themelon.openspace.client.io.BidirectionalSocket
+import space.themelon.openspace.client.io.BytesIO
 import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.net.Socket
 import kotlin.concurrent.thread
 
@@ -10,9 +11,10 @@ object Client {
     fun start(serverIp: String, serverPort: Int) {
         thread {
             while (true) {
-                val server = Socket(serverIp, serverPort)
+                val socket = Socket()
+                socket.connect(InetSocketAddress(serverIp, serverPort), 0)
                 thread {
-                    routeRequest(server)
+                    routeRequest(socket)
                 }
             }
         }
@@ -27,7 +29,7 @@ object Client {
         val input = server.getInputStream()
         //val output = client.getOutputStream()
 
-        val originAddr = BytesIO.readFixedString(input)
+        val originAddr = InetAddress.getByAddress(BytesIO.readFixedString(input))
 
         println("Origin address: $originAddr")
 
@@ -46,7 +48,7 @@ object Client {
 
         println("Route address $inetAddr, port $port")
 
-        val socket = Socket(inetAddr, port)
+        val socket = Socket(inetAddr, 1024)
         BidirectionalSocket.relay(server, socket)
     }
 

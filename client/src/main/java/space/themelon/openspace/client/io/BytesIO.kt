@@ -1,4 +1,4 @@
-package space.themelon.openspace.helper.io
+package space.themelon.openspace.client.io
 
 import java.io.IOException
 import java.io.InputStream
